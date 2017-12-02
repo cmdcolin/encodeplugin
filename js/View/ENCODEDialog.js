@@ -7,6 +7,8 @@ define([
         'dijit/form/RadioButton',
         'dijit/form/CheckBox',
         'dijit/form/TextBox',
+        'dojo/on',
+        'dojo/query',
         'JBrowse/View/Dialog/WithActionBar'
     ],
     function(
@@ -18,6 +20,8 @@ define([
         dRButton,
         dCheckBox,
         dTextBox,
+        on,
+        query,
         ActionBarDialog
     ) {
 
@@ -35,11 +39,11 @@ return declare( ActionBarDialog, {
         var content = this.content = {};
 
         var container = dom.create('div', { className: 'search-dialog' } );
-
-        var introdiv = dom.create('div', {
-            className: 'search-dialog intro',
-            innerHTML: 'Browser ENCODE'
-        }, container );
+        dom.create( 'img', {
+            src: 'https://www.genome.gov/Images/feature_images/ENCODE_logo.gif',
+            width: '100'
+        }, container);
+       
 
         // Render text box
         var searchBoxDiv = dom.create('div', {
@@ -49,17 +53,59 @@ return declare( ActionBarDialog, {
                         className: "header",
                         innerHTML: "Search for"
                     }, searchBoxDiv );
+
+        content.searchBox = new dTextBox({}).placeAt( searchBoxDiv );
+        var x = dom.create('p', {}, container);
+        var thisB = this;
+        var map = {};
+        on(content.searchBox, 'change', function() {
+            val = content.searchBox.get('value');
+            fetch('https://www.encodeproject.org/search/?type=file&dataset=/experiments/'+val+'/&format=json&limit=all').then(function(res) {
+                res.json().then(function(res2) {
+                    res2['@graph'].forEach(function(elt) {
+                        var b = dom.create('button', {class: 'mybutton', myhref: elt.title, innerHTML: 'Add'},x);
+                        b._href = elt.href;
+                        map[elt.title] = elt;
+                        x.innerHTML += elt.title+' '+elt.assembly+' '+elt.output_type+' '+elt.file_format+'<br/>';
+                    });
+                    query('.mybutton').on('click', function(evt) {
+                        var title = evt.target.getAttribute('myhref');
+                        thisB.addTrack(map[title]);
+                    });
+                    thisB.resize();
+                    console.log(res2)
+                });
+
+            }, function(err) {
+                console.error('error', err)
+            });
+            console.log(content.searchBox.get('value'));
+        });
         
 
         return container;
     },
 
-    _getSearchParams: function() {
-        var content = this.content;
-        return {
-            expr: content.searchBox.get('value'),
-            maxLen: 100
-        };
+    addTrack: function(url) {
+        console.log(url);
+		var storeConf = {
+			browser: this.browser,
+			refSeq: this.browser.refSeq,
+			type: trackConf.storeClass,
+			baseUrl: this.browser.config.baseUrl + 'data/',
+			urlTemplate: trackConf.urlTemplate
+		};
+		var storeName = this.browser.addStoreConfig(null, storeConf);
+		var thisB = this;
+		storeConf.name = storeName;
+		this.browser.getStore(storeName, function() {
+			trackConf.store = storeName;
+			if (trackConf.style && trackConf.style.color) {
+				trackConf.style.color = eval('(' + trackConf.style.color + ')');
+			}
+			thisB.browser.publish('/jbrowse/v1/v/tracks/new', [trackConf]);
+			thisB.browser.publish('/jbrowse/v1/v/tracks/show', [trackConf]);
+		});
     },
 
     _fillActionBar: function ( actionBar ) {
