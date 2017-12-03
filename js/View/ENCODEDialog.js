@@ -132,7 +132,8 @@ return declare( ActionBarDialog, {
             .placeAt( actionBar );
     },
 
-    show: function ( callback ) {
+    show: function ( browser, callback ) {
+        this.browser = browser;
         this.callback = callback || function() {};
         this.set( 'title', "ENCODE search");
         this.set( 'content', this._dialogContent() );

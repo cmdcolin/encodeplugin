@@ -34,7 +34,7 @@ return declare( JBrowsePlugin,
 
         var searchDialog = new ENCODEDialog();
         var thisB = this;
-        searchDialog.show(
+        searchDialog.show(this.browser,
             function( searchParams ) {
                 if( !searchParams )
                     return;
