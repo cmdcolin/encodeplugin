@@ -4,7 +4,6 @@ define([
     'dojo/aspect',
     'dijit/focus',
     'dijit/form/Button',
-    'dijit/form/RadioButton',
     'dijit/form/CheckBox',
     'dijit/form/TextBox',
     'dojo/on',
@@ -16,10 +15,9 @@ function (
     dom,
     aspect,
     focus,
-    dButton,
-    dRButton,
-    dCheckBox,
-    dTextBox,
+    Button,
+    CheckBox,
+    TextBox,
     on,
     query,
     ActionBarDialog
@@ -53,12 +51,12 @@ function (
                 innerHTML: 'Search for'
             }, searchBoxDiv);
 
-            content.searchBox = new dTextBox({}).placeAt(searchBoxDiv);
+            content.searchBox = new TextBox({}).placeAt(searchBoxDiv);
             var x = dom.create('p', {}, container);
             var thisB = this;
             var map = {};
             on(content.searchBox, 'change', function () {
-                val = content.searchBox.get('value');
+                var val = content.searchBox.get('value');
                 fetch('https://www.encodeproject.org/search/?type=file&dataset=/experiments/' + val + '/&format=json&limit=all').then(function (res) {
                     res.json().then(function (res2) {
                         res2['@graph'].forEach(function (elt) {
@@ -85,12 +83,12 @@ function (
         },
 
         addTrack: function (url) {
-            console.log(url)
+            console.log(url);
             var storeConf = {
                 browser: this.browser,
                 refSeq: this.browser.refSeq,
                 type: 'JBrowse/Store/SeqFeature/BigWig',
-                urlTemplate: 'https://www.encodeproject.org'+url.href
+                urlTemplate: 'https://www.encodeproject.org' + url.href
             };
             var storeName = this.browser.addStoreConfig(null, storeConf);
             var trackConf = {
@@ -106,7 +104,7 @@ function (
         _fillActionBar: function (actionBar) {
             var thisB = this;
 
-            new dButton({
+            new Button({
                 label: 'Search',
                 iconClass: 'dijitIconBookmark',
                 onClick: function () {
@@ -114,17 +112,15 @@ function (
                     thisB.callback(searchParams);
                     thisB.hide();
                 }
-            })
-                .placeAt(actionBar);
-            new dButton({
+            }).placeAt(actionBar);
+            new Button({
                 label: 'Cancel',
                 iconClass: 'dijitIconDelete',
                 onClick: function () {
                     thisB.callback(false);
                     thisB.hide();
                 }
-            })
-                .placeAt(actionBar);
+            }).placeAt(actionBar);
         },
 
         show: function (browser, callback) {

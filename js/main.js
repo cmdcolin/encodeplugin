@@ -10,58 +10,27 @@ function (
     declare,
     lang,
     Deferred,
-    dijitMenuItem,
+    MenuItem,
     JBrowsePlugin,
     ENCODEDialog
 ) {
-    return declare(JBrowsePlugin,
-        {
-            constructor: function (args) {
-                this._searchTrackCount = 0;
+    return declare(JBrowsePlugin, {
+        constructor: function () {
+            this.browser.afterMilestone('initView', function () {
+                this.browser.addGlobalMenuItem('file', new MenuItem(
+                    {
+                        label: 'ENCODE track browser',
+                        onClick: lang.hitch(this, 'createSearchTrack')
+                    }));
+            }, this);
+        },
 
-                var thisB = this;
-                this.browser.afterMilestone('initView', function () {
-                    this.browser.addGlobalMenuItem('file', new dijitMenuItem(
-                        {
-                            label: 'ENCODE track browser',
-                            onClick: lang.hitch(this, 'createSearchTrack')
-                        }));
-                }, this);
-            },
+        createSearchTrack: function () {
+            var searchDialog = new ENCODEDialog();
+            searchDialog.show(this.browser,
+                function () {
 
-            createSearchTrack: function () {
-                var searchDialog = new ENCODEDialog();
-                var thisB = this;
-                searchDialog.show(this.browser,
-                    function (searchParams) {
-                        if (!searchParams) {return;}
-
-                        var storeConf = {
-                            browser: thisB.browser,
-                            refSeq: thisB.browser.refSeq,
-                            type: 'ENCODEPlugin/Store/SeqFeature/RegexSearch',
-                            searchParams: searchParams
-                        };
-                        var storeName = thisB.browser.addStoreConfig(undefined, storeConf);
-                        storeConf.name = storeName;
-                        var searchTrackConfig = {
-                            type: 'JBrowse/View/Track/CanvasFeatures',
-                            label: 'search_track_' + (thisB._searchTrackCount++),
-                            key: "Search reference sequence for '" + searchParams.expr + "'",
-                            metadata: {
-                                category: 'Local tracks',
-                                Description: "Contains all matches of the text string/regular expression '" + storeConf.searchExpr + "'"
-                            },
-                            store: storeName
-                        };
-
-                        // send out a message about how the user wants to create the new track
-                        thisB.browser.publish('/jbrowse/v1/v/tracks/new', [searchTrackConfig]);
-
-                        // Open the track immediately
-                        thisB.browser.publish('/jbrowse/v1/v/tracks/show', [searchTrackConfig]);
-                    });
-            }
-
-        });
+                });
+        }
+    });
 });
