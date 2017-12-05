@@ -5,7 +5,6 @@ define([
     'dojo/aspect',
     'dijit/focus',
     'dijit/form/Button',
-    'dijit/form/CheckBox',
     'dijit/form/TextBox',
     'dojo/on',
     'dojo/query',
@@ -18,7 +17,6 @@ function (
     aspect,
     focus,
     Button,
-    CheckBox,
     TextBox,
     on,
     query,
@@ -54,7 +52,7 @@ function (
             }, searchBoxDiv);
 
             content.searchBox = new TextBox({}).placeAt(searchBoxDiv);
-            var x = dom.create('p', {}, container);
+            var x = dom.create('div', { style: { width: '500px' } }, container);
             var thisB = this;
             var map = {};
             on(content.searchBox, 'change', function () {
@@ -62,24 +60,18 @@ function (
                 var val = content.searchBox.get('value');
                 fetch('https://www.encodeproject.org/search/?type=file&dataset=/experiments/' + val + '/&format=json&limit=all').then(function (res) {
                     res.json().then(function (res2) {
-                        var b1 = dom.create('button', {class: 'allbigwig', innerHTML: 'Add all BigWig'}, x);
-                        var b2 = dom.create('button', {class: 'allbam', innerHTML: 'Add all BAM'}, x);
-                        var b3 = dom.create('button', {class: 'allbigbed', innerHTML: 'Add all BigBed'}, x);
+                        console.log(res2);
+                        dom.create('button', {class: 'allbigwig', innerHTML: 'Add all BigWig'}, x);
+
                         dom.create('br', {}, x);
-                        on(b1, 'click', function () {
-                            var arr = [];
-                            Object.keys(map).forEach(function (r) {
-                                if (map[r].file_format === 'bigwig') {
-                                    arr.push(map[r]);
-                                }
-                            });
-                            thisB.addMultiBigWig(arr);
-                        });
+
 
                         res2['@graph'].forEach(function (elt) {
-                            dom.create('button', {class: 'mybutton', myhref: elt.title, innerHTML: 'Add'}, x);
-                            map[elt.title] = elt;
-                            x.innerHTML += elt.title + ' ' + elt.assembly + ' ' + elt.output_type + ' ' + elt.file_format + '<br/>';
+                            if(elt.file_format == 'bigWig' || elt.file_format == 'bigBed') {
+                                dom.create('button', {class: 'mybutton', myhref: elt.title, innerHTML: 'Add'}, x);
+                                map[elt.title] = elt;
+                                x.innerHTML += elt.title + ' ' + elt.assembly + ' ' + elt.output_type + ' ' + elt.file_format + '<br/>';
+                            }
                         });
 
                         query('.mybutton').on('click', function (evt) {
@@ -87,7 +79,19 @@ function (
                             thisB.addTrack(map[title]);
                         });
 
+                        query('.allbigwig').on('click', function () {
+                            var arr = [];
+                            Object.keys(map).forEach(function (r) {
+                                if (map[r].file_format === 'bigWig') {
+                                    arr.push(map[r]);
+                                }
+                            });
+                            thisB.addMultiBigWig(arr);
+                        });
+
                         thisB.resize();
+                    }, function (res3) {
+                        console.error('error', res3);
                     });
                 }, function (err) {
                     console.error('error', err);
@@ -100,11 +104,12 @@ function (
         },
 
         addMultiBigWig: function (arr) {
+            var struct = array.map(arr, function (elt) { return {url: 'https://www.encodeproject.org' + elt.href, name: elt.title +' '+elt.output_type}; })
             var storeConf = {
                 browser: this.browser,
                 refSeq: this.browser.refSeq,
-                type: 'MUltiBigWig/Store/SeqFeature/MultiBigWig',
-                urlTemplates: array.map(arr, function (elt) { return {url: 'https://www.encodeproject.org' + elt.href, name: elt.title }; })
+                type: 'MultiBigWig/Store/SeqFeature/MultiBigWig',
+                urlTemplates: struct
             };
             var storeName = this.browser.addStoreConfig(null, storeConf);
 
@@ -112,7 +117,11 @@ function (
                 type: 'MultiBigWig/View/Track/MultiWiggle/MultiDensity',
                 store: storeName,
                 label: 'MultiBigWig',
-                urlTemplates: array.map(arr, function (elt) { return {url: elt.href, name: elt.title }; })
+                urlTemplates: struct,
+                showLabels: true,
+                style: {
+                    height: 20*struct.length
+                }
             };
             trackConf.store = storeName;
             this.browser.publish('/jbrowse/v1/v/tracks/new', [trackConf]);
@@ -122,15 +131,15 @@ function (
             var storeConf = {
                 browser: this.browser,
                 refSeq: this.browser.refSeq,
-                type: 'JBrowse/Store/SeqFeature/BigWig',
+                type: url.file_format == 'bigWig' ? 'JBrowse/Store/SeqFeature/BigWig' : 'JBrowse/Store/SeqFeature/BigBed',
                 urlTemplate: 'https://www.encodeproject.org' + url.href
             };
             var storeName = this.browser.addStoreConfig(null, storeConf);
 
             var trackConf = {
-                type: 'JBrowse/View/Track/Wiggle/XYPlot',
+                type: url.file_format == 'bigWig' ? 'JBrowse/View/Track/Wiggle/XYPlot' : 'JBrowse/View/Track/CanvasFeatures',
                 store: storeName,
-                label: url.title
+                label: url.title + ' ' + url.output_type
             };
             trackConf.store = storeName;
             this.browser.publish('/jbrowse/v1/v/tracks/new', [trackConf]);
